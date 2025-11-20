@@ -21,21 +21,16 @@ if "chat_session" not in st.session_state:
     st.session_state.history = []
 
 # ==========================
-# 2. 讀取知識庫資料夾
-# ==========================
-# ==========================
-# 2. 讀取知識庫資料夾（兼容本機與 Streamlit Cloud）
+# 2. 讀取知識庫 txt 檔案（根目錄）
 # ==========================
 KNOWLEDGE_BASE_TEXT = ""
-
-# 取得 app.py 的目錄
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# 找到所有 txt 檔
-knowledge_files = glob.glob(os.path.join(KNOWLEDGE_DIR, "*.txt"))
+# 直接抓專案根目錄下所有 txt
+knowledge_files = glob.glob(os.path.join(BASE_DIR, "*.txt"))
 
 if not knowledge_files:
-    st.error("knowledge1 資料夾中找不到任何 .txt 檔案，請確認資料夾位置與檔案是否正確上傳")
+    st.error("專案目錄中找不到任何 .txt 檔案，請確認檔案是否正確上傳")
     st.stop()
 
 for file_path in knowledge_files:
@@ -44,7 +39,6 @@ for file_path in knowledge_files:
             KNOWLEDGE_BASE_TEXT += f.read() + "\n\n"
     except Exception as e:
         st.warning(f"讀取 {file_path} 發生錯誤：{e}")
-
 
 # ==========================
 # 3. 系統指令 (含知識庫)
@@ -79,7 +73,6 @@ SYSTEM_INSTRUCTION = f"""
 # ==========================
 st.set_page_config(page_title="中正小幫手", layout="wide")
 
-# CSS樣式
 st.markdown(
     """
     <style>
@@ -106,12 +99,12 @@ with col1:
         logo = Image.open("ccu_logo.png")
         st.image(logo, width=800)
     except:
-        st.write("")  # 如果圖片不存在，留空
+        st.write("")
 with col2:
     st.markdown('<h1 style="color:#000000; margin:0;"> 中正小幫手(企研所+金科所)</h1>', unsafe_allow_html=True)
 
 # ==========================
-# 對話氣泡函式 - 左靠，避免出現多餘 </div>
+# 對話氣泡函式
 # ==========================
 def display_message(role, text):
     safe_text = text.replace("<", "&lt;").replace(">", "&gt;")
@@ -164,4 +157,3 @@ st.button("送出", on_click=send_message)
 # ==========================
 if st.button("清除對話"):
     st.session_state.history = []
-
