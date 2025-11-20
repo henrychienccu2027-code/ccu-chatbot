@@ -31,9 +31,6 @@ KNOWLEDGE_BASE_TEXT = ""
 # 取得 app.py 的目錄
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# knowledge1 資料夾的完整路徑
-KNOWLEDGE_DIR = os.path.join(BASE_DIR, "knowledge1")
-
 # 找到所有 txt 檔
 knowledge_files = glob.glob(os.path.join(KNOWLEDGE_DIR, "*.txt"))
 
@@ -167,3 +164,4 @@ st.button("送出", on_click=send_message)
 # ==========================
 if st.button("清除對話"):
     st.session_state.history = []
+
