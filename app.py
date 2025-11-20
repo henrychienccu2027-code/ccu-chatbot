@@ -29,7 +29,7 @@ KNOWLEDGE_BASE_TEXT = ""
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 找到所有根目錄下的 txt 檔案
-knowledge_files = glob.glob(os.path.join(BASE_DIR, "*.txt"))
+knowledge_files = glob.glob(os.path.join(BASE_DIR, "*.TXT"))
 
 if not knowledge_files:
     st.error("專案目錄中找不到任何 .txt 檔案，請確認檔案是否正確上傳")
@@ -160,4 +160,5 @@ st.button("送出", on_click=send_message)
 # ==========================
 if st.button("清除對話"):
     st.session_state.history = []
+
 
