@@ -1,6 +1,5 @@
 import streamlit as st
 from google import genai
-from dotenv import load_dotenv
 import os
 import glob
 from PIL import Image
@@ -8,13 +7,11 @@ from PIL import Image
 # ==========================
 # 1. 初始化
 # ==========================
-load_dotenv(encoding="utf-8")
-
 # 建立 GenAI client
 if "client" not in st.session_state:
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY")  # <- 從 Streamlit Secrets 讀取
     if not GEMINI_API_KEY:
-        st.error("找不到 GEMINI_API_KEY，請確認 .env 是否正確設置")
+        st.error("找不到 GEMINI_API_KEY，請確認 Streamlit Secrets 是否正確設置")
         st.stop()
     st.session_state.client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -108,9 +105,7 @@ with col2:
 # 對話氣泡函式 - 左靠，避免出現多餘 </div>
 # ==========================
 def display_message(role, text):
-    # 將可能的 HTML 標籤轉義，避免干擾
     safe_text = text.replace("<", "&lt;").replace(">", "&gt;")
-
     if role == "user":
         st.markdown(
             f'<div style="text-align:left; background-color:#d9d9d9; padding:12px; border-radius:12px; margin:8px 0; max-width:70%; color:#000000; word-wrap: break-word;">👤 你：{safe_text}</div>',
@@ -134,7 +129,6 @@ def send_message():
     if not user_input:
         return
 
-    # 第一次使用者輸入時再送 SYSTEM 指令
     if "system_sent" not in st.session_state:
         try:
             st.session_state.chat_session.send_message(f"system: {SYSTEM_INSTRUCTION}")
@@ -142,10 +136,8 @@ def send_message():
         except Exception as e:
             st.error(f"初始化 SYSTEM 指令錯誤：{e}")
 
-    # 加入使用者訊息
     st.session_state.history.append(("user", user_input))
 
-    # 呼叫模型
     try:
         response = st.session_state.chat_session.send_message(user_input)
         ai_text = "\n".join([part.text for part in response.parts])
@@ -153,9 +145,8 @@ def send_message():
     except Exception as e:
         st.error(f"API 呼叫錯誤：{e}")
 
-    st.session_state.user_input = ""  # 清空輸入框
+    st.session_state.user_input = ""
 
-# 輸入框 + 按鈕
 st.text_area("輸入問題...", key="user_input", height=50)
 st.button("送出", on_click=send_message)
 
