@@ -1,0 +1,5 @@
+# requirements.txt 檔案內容
+streamlit
+google-genai
+python-dotenv
+Pillow
