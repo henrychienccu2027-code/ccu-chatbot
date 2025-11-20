@@ -9,7 +9,7 @@ from PIL import Image
 # ==========================
 # 建立 GenAI client
 if "client" not in st.session_state:
-    GEMINI_API_KEY = st.secrets.get("GEMINI_API_KEY")  # <- 從 Streamlit Secrets 讀取
+    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]  # <- 從 Streamlit Secrets 讀取
     if not GEMINI_API_KEY:
         st.error("找不到 GEMINI_API_KEY，請確認 Streamlit Secrets 是否正確設置")
         st.stop()
@@ -160,3 +160,4 @@ st.button("送出", on_click=send_message)
 # ==========================
 if st.button("清除對話"):
     st.session_state.history = []
+
