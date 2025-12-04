@@ -3,73 +3,31 @@ from google import genai
 import os
 import glob
 from PIL import Image
-from datetime import date
+from datetime import datetime, date
+import pandas as pd
+from streamlit_gsheets import GSheetsConnection
 
 # ==========================================
-# 1. 頁面設定與 CSS (UI 美化)
+# 1. 頁面設定與 CSS
 # ==========================================
-st.set_page_config(page_title="中正企研小幫手", layout="wide", page_icon="🎓")
+st.set_page_config(page_title="中正企研小幫手", layout="wide")
 
-# CSS 樣式
 st.markdown(
     """
     <style>
-    /* 全域背景色：淡藍色 */
-    .stApp {
-        background-color: #eff6ff; 
-    }
-
-    /* 側邊欄樣式優化 */
-    [data-testid="stSidebar"] {
-        background-color: #ffffff;
-        border-right: 1px solid #e5e7eb;
-    }
-
-    /* 調整 Header 標題 */
-    .main-header {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: #1e3a8a; /* 深藍色 */
-        margin-bottom: 0.5rem;
-    }
-    .sub-header {
-        font-size: 1rem;
-        color: #6b7280;
-        margin-bottom: 2rem;
-    }
-
-    /* 聊天氣泡優化 */
-    .stChatMessage {
-        background-color: transparent;
-    }
-
-    /* 側邊欄標題樣式 */
-    .sidebar-title {
-        font-size: 1.1rem;
-        font-weight: bold;
-        color: #1e3a8a;
-        margin-bottom: 15px;
-        margin-top: 10px;
-    }
-
-    /* 側邊欄日程表樣式 (解決擠在一起的問題) */
-    .schedule-item {
-        margin-bottom: 12px; /* 每一項之間的距離 */
-        font-size: 0.95rem;
-        color: #374151;
-        line-height: 1.4;
-    }
-    .schedule-icon {
-        margin-right: 5px;
-    }
-
-    /* 版權宣告樣式 */
-    .footer-text {
-        font-size: 0.8rem;
-        color: #9ca3af; /* 淺灰色 */
-        text-align: center;
-        margin-top: 20px;
-    }
+    .stApp { background-color: #eff6ff; }
+    h1, h2, h3, h4, h5, h6, p, li, span, div.stMarkdown, div.stMetricLabel { color: #0d0d0d !important; }
+    [data-testid="stMetricValue"] { color: #1e3a8a !important; font-weight: bold; }
+    a { color: #1e3a8a !important; }
+    [data-testid="stSidebar"] { background-color: #ffffff; border-right: 1px solid #e5e7eb; }
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] div { color: #374151 !important; }
+    .main-header { font-size: 1.8rem; font-weight: 700; color: #1e3a8a !important; margin-bottom: 0.5rem; }
+    .sub-header { font-size: 1rem; color: #6b7280 !important; margin-bottom: 2rem; }
+    .stChatMessage { background-color: transparent; }
+    .sidebar-title { font-size: 1.1rem; font-weight: bold; color: #1e3a8a !important; margin-bottom: 15px; margin-top: 10px; }
+    .schedule-item { margin-bottom: 12px; font-size: 0.95rem; color: #374151 !important; line-height: 1.4; }
+    .footer-text { font-size: 0.8rem; color: #9ca3af !important; text-align: center; margin-top: 20px; }
+    a img { border: none; }
     </style>
     """,
     unsafe_allow_html=True
@@ -78,6 +36,7 @@ st.markdown(
 # ==========================================
 # 2. 初始化與 API 設定
 # ==========================================
+# A. Gemini API
 if "client" not in st.session_state:
     try:
         if "GEMINI_API_KEY" in st.secrets:
@@ -90,21 +49,26 @@ if "client" not in st.session_state:
         st.error(f"API 初始化失敗: {e}")
         st.stop()
 
-# 初始化聊天 Session
 if "chat_session" not in st.session_state:
     st.session_state.chat_session = st.session_state.client.chats.create(model="gemini-2.0-flash")
+
+# B. Google Sheets 連線初始化
+try:
+    conn = st.connection("gsheets", type=GSheetsConnection)
+except Exception as e:
+    st.error(f"Google Sheets 連線失敗，請檢查 secrets 設定: {e}")
+    conn = None
 
 # 初始化歷史訊息
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    # 預設歡迎訊息 (專注於企研所)
     st.session_state.messages.append({
         "role": "assistant",
         "content": "你好！我是中正大學企業管理研究所（MBA）的 AI 小幫手。關於課程特色、師資或報考資訊，歡迎隨時問我！"
     })
 
 # ==========================================
-# 3. 每日限制功能 (Rate Limiting)
+# 3. 每日限制與日期
 # ==========================================
 if "daily_count" not in st.session_state:
     st.session_state.daily_count = 0
@@ -134,33 +98,25 @@ if knowledge_files:
             pass
 
 # ==========================================
-# 5. 側邊欄 (修正版)
+# 5. 側邊欄 (純資訊，無登入框)
 # ==========================================
 with st.sidebar:
     if os.path.exists("ccu_logo.png"):
         st.image("ccu_logo.png", width=200)
     else:
-        st.markdown("###  中正企研小幫手")
+        st.markdown("### 🎓 中正企研小幫手")
 
-    # ----- 社群 ICON 區塊 -----
-    st.write(" ")  # 加一點間距
+    st.write(" ")
     col_fb, col_ig, col_empty = st.columns([1, 1, 3])
-
     with col_fb:
-        # Facebook 圖示
         st.markdown(
             "[![FB](https://img.icons8.com/color/48/facebook-new.png)](https://www.facebook.com/joinccumba/?locale=zh_TW)")
-
     with col_ig:
-        # Instagram 圖示
         st.markdown("[![IG](https://img.icons8.com/color/48/instagram-new.png)](https://www.instagram.com/ccu_mba/)")
 
     st.markdown("---")
 
-    # 📌 2025 企管所考試入學重要資訊 (使用 HTML Div 確保排版不跑掉)
     st.markdown('<div class="sidebar-title">📌 2025 企管所考試入學重要資訊</div>', unsafe_allow_html=True)
-
-    # 這裡改成用 div class="schedule-item" 來包每一行，確保它們之間有間距且不會擠在一起
     st.markdown("""
     <div class="schedule-item">⏰ <b>一、報名</b><br>114/12/2 09:00 — 12/15 17:00</div>
     <div class="schedule-item">🎫 <b>二、筆試准考證下載</b><br>115/2/2 — 2/11</div>
@@ -171,76 +127,44 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     st.markdown("---")
+
+    # 【已移除管理員登入區塊】
+
     st.caption(f"📅 今日額度: {st.session_state.daily_count}/{MAX_QUESTIONS}")
 
-    # 版權宣告 (Footer)
-    st.markdown(
-        """
-        <div class="footer-text">
-            CCUMBA Chatbot 
-            created by 2025招說會團隊
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
 
 # ==========================================
-# 6. 主畫面 (Main Chat Area)
+# 6. 主畫面 (移除後台邏輯，只保留聊天)
 # ==========================================
 
-# 標題區
 st.markdown('<div class="main-header">中正企研小幫手</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">隨時為您回答問題</div>', unsafe_allow_html=True)
 
-# 顯示歷史訊息
 for message in st.session_state.messages:
     avatar = "🤖" if message["role"] == "assistant" else "👤"
     with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
 
-# ==========================================
-# 7. 輸入處理與 AI 回答
-# ==========================================
-
-# 底部輸入框
 user_input = None
-
 if st.session_state.daily_count < MAX_QUESTIONS:
     user_input = st.chat_input("請輸入關於中正企研所的問題...")
 else:
     st.info("🔔 今日提問額度已達上限，歡迎明天再來！")
 
 if user_input:
-    # 1. 顯示使用者輸入
     with st.chat_message("user", avatar="👤"):
         st.markdown(user_input)
     st.session_state.messages.append({"role": "user", "content": user_input})
 
-    # 2. 準備 System Prompt (鎖定企研所範圍)
     full_prompt = f"""
-角色設定：
-    你是國立中正大學企業管理研究所（MBA）的專屬 AI 小幫手。
-    你的任務是僅回答關於「中正企研所」的課程、師資、考試、報名等資訊。
+    角色設定： 你是國立中正大學企業管理研究所（MBA）的專屬 AI 小幫手。 你的任務是僅回答關於「中正企研所」的課程、師資、考試、報名等資訊。 重要規則： 1. 若使用者詢問「金融科技所」、「FinTech」或其他系所，請禮貌回答：「抱歉，我目前僅負責企研所（MBA）的相關諮詢，無法回答其他系所的問題。」 2. 嚴格依據以下知識庫回答，若無資料請建議聯繫系辦。 3. 語氣親切、專業且具鼓勵性。 4. 嚴格依據【知識庫】回答問題。 5. 如果問題涉及本系，但知識庫中沒有答案： 「這部分資訊我目前手邊沒有確切資料，建議您直接聯繫系辦確認。」 6. 如果問題與中正大學企管所無關： 「抱歉，我不適合回答這個問題。」 7. 條理分明，複雜資訊請使用條列式呈現。 8. 不回答私人問題或閒聊。
 
-    重要規則：
-    1. 若使用者詢問「金融科技所」、「FinTech」或其他系所，請禮貌回答：「抱歉，我目前僅負責企研所（MBA）的相關諮詢，無法回答其他系所的問題。」
-    2. 嚴格依據以下資料庫回答，若無資料請建議聯繫系辦。
-    3. 語氣親切、專業且具鼓勵性。
-    4. 嚴格依據【資料庫】回答問題。
-    5. 如果問題涉及本系，但資料庫中沒有答案：
-       「這部分資訊我目前手邊沒有確切資料，建議您直接聯繫系辦確認。」
-    6. 如果問題與中正大學企管所無關：
-       「抱歉，我不適合回答這個問題。」
-    7. 條理分明，複雜資訊請使用條列式呈現。
-    8. 不回答私人問題或閒聊。
-    
         知識庫內容：
-    {KNOWLEDGE_BASE_TEXT}
+        {KNOWLEDGE_BASE_TEXT}
 
-    使用者問題：{user_input}
+        使用者問題：{user_input}
     """
 
-    # 3. 呼叫 AI
     try:
         with st.chat_message("assistant", avatar="🤖"):
             with st.spinner("請稍後..."):
@@ -248,13 +172,35 @@ if user_input:
                 ai_reply = response.text
                 st.markdown(ai_reply)
 
-        # 4. 儲存回應
         st.session_state.messages.append({"role": "assistant", "content": ai_reply})
-
-        # 5. 扣除額度
         st.session_state.daily_count += 1
 
-        # 強制刷新以更新側邊欄額度 (可選)
+        # 🔥 核心：寫入 Google Sheets (背景執行)
+        if conn:
+            try:
+                # 1. 讀取現有資料
+                existing_data = conn.read(worksheet="Sheet1", ttl=0)
+
+                # 2. 準備新的一筆資料
+                new_entry = pd.DataFrame([{
+                    "時間": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "使用者問題": user_input,
+                    "AI 回答": ai_reply,
+                    "字數": len(ai_reply)
+                }])
+
+                # 3. 合併
+                if existing_data.empty:
+                    updated_data = new_entry
+                else:
+                    updated_data = pd.concat([existing_data, new_entry], ignore_index=True)
+
+                # 4. 更新回 Google Sheets
+                conn.update(worksheet="Sheet1", data=updated_data)
+
+            except Exception as db_e:
+                print(f"資料庫寫入失敗: {db_e}")
+
         st.rerun()
 
     except Exception as e:
