@@ -139,14 +139,6 @@ with st.sidebar:
 
     st.caption(f"📅 今日額度: {st.session_state.daily_count}/{MAX_QUESTIONS}")
 
-    st.markdown(
-        """
-        <div class="footer-text">
-            CCUMBA Chatbot created by 2025招說會團隊
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
 
 # ==========================================
 # 6. 主畫面
@@ -242,3 +234,4 @@ if user_input:
 
     except Exception as e:
         st.error(f"發生錯誤: {e}")
+
