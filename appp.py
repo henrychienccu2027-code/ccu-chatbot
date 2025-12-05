@@ -3,7 +3,7 @@ from google import genai
 import os
 import glob
 from PIL import Image
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 
@@ -183,7 +183,7 @@ if user_input:
 
                 # 2. 準備新的一筆資料
                 new_entry = pd.DataFrame([{
-                    "時間": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "時間": (datetime.utcnow() + timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S"),
                     "使用者問題": user_input,
                     "AI 回答": ai_reply,
                     "字數": len(ai_reply)
@@ -205,3 +205,4 @@ if user_input:
 
     except Exception as e:
         st.error(f"發生錯誤: {e}")
+
