@@ -55,7 +55,7 @@ if "client" not in st.session_state:
         st.stop()
 
 if "chat_session" not in st.session_state:
-    st.session_state.chat_session = st.session_state.client.chats.create(model="gemini-1.5-flash")
+    st.session_state.chat_session = st.session_state.client.chats.create(model="gemini-flash-lite-latest")
 
 # B. Google Sheets 連線初始化
 try:
@@ -234,6 +234,7 @@ if user_input:
 
     except Exception as e:
         st.error(f"發生錯誤: {e}")
+
 
 
 
